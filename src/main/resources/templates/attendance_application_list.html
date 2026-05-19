@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>申請一覧</title>
+
+    <!-- Bootstrap5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+          rel="stylesheet">
+</head>
+
+<body>
+<div class="container mt-4">
+
+    <!-- 上部エリア -->
+    <div class="d-flex align-items-center mb-4">
+
+        <!-- 左：勤怠一覧ボタン -->
+        <div>
+            <a th:href="@{/user/attendance_list}" class="btn btn-outline-primary">
+                勤怠一覧
+            </a>
+        </div>
+
+        <!-- 中央：タイトル -->
+        <div class="flex-fill text-center">
+            <h2 class="mb-0">申請一覧</h2>
+        </div>
+
+        <!-- 右側スペース（バランス調整用） -->
+        <div style="width:100px;"></div>
+
+    </div>
+
+    <!-- 申請一覧テーブル -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+			<div style="max-height: 600px; overflow-y: auto;">
+	            <table class="table table-bordered table-hover align-middle text-center">
+	                <thead class="table-light" style="position: sticky; top: 0; z-index: 2; background-color: #f8f9fa;">
+	                <tr>
+	                    <th>ユーザー名</th>
+	                    <th>日付</th>
+	                    <th>出勤</th>
+	                    <th>退勤</th>
+	                    <th>ステータス</th>
+	                </tr>
+	                </thead>
+	
+	                <tbody>
+						<tr th:each="app : ${applicationList}">
+						    <td th:text="${app.userId}"></td>
+						    <td th:text="${#temporals.format(app.workDate, 'yyyy/MM/dd')}"></td>
+						    <td th:text="${app.clockIn != null ? #temporals.format(app.clockIn, 'HH:mm') : ''}"></td>
+						    <td th:text="${app.clockOut != null ? #temporals.format(app.clockOut, 'HH:mm') : ''}"></td>
+							<td>
+	
+							    <!-- 管理者の場合 -->
+							    <div th:if="${role == 0 and app.status.isPending()}">
+							        <form th:action="@{/user/attendance/application/approve}" method="post" style="display:inline;">
+							            <input type="hidden" name="applicationId" th:value="${app.id}">
+							            <button type="submit" class="btn btn-sm btn-success">
+							                承認
+							            </button>
+							        </form>
+	
+							        <form th:action="@{/user/attendance/application/reject}" method="post" style="display:inline;">
+							            <input type="hidden" name="applicationId" th:value="${app.id}">
+							            <button type="submit" class="btn btn-sm btn-danger">
+							                却下
+							            </button>
+							        </form>
+							    </div>
+	
+							    <!-- 管理者以外 -->
+							    <div th:unless="${role == 0 and app.status.isPending()}">
+							        <span th:text="${app.status.label}"></span>
+							    </div>
+	
+							</td>
+						</tr>
+	                </tbody>
+	            </table>
+			</div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

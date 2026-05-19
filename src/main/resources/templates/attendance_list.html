@@ -1,0 +1,173 @@
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+	<meta charset="UTF-8">
+	<title>勤怠</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+	<meta name="_csrf" th:content="${_csrf.token}">
+	<meta name="_csrf_header" th:content="${_csrf.headerName}">
+</head>
+
+<body>
+
+	<div class="container-fluid mt-3">
+		<!-- 上部ボタンエリア -->
+		<div class="d-flex justify-content-between align-items-start mb-3">
+			<!-- 左側 -->
+			<div>
+				<div class="mb-2">
+					<a href="/user/attendance" class="btn btn-outline-secondary">
+						勤怠登録
+					</a>
+				</div>
+				<div>
+					<a href="/user/attendance/application_list" class="btn btn-outline-secondary">
+						申請一覧
+					</a>
+				</div>
+			</div>
+
+			<!-- 右側 -->
+			<div>
+				<form action="/logout" method="post">
+					<button type="submit" class="btn btn-outline-danger">
+						ログアウト
+					</button>
+				</form>
+			</div>
+
+		</div>
+
+		<div class="d-flex justify-content-center gap-3 mb-3">
+
+			<button type="button" class="btn btn-outline-secondary" onclick="changeMonth(-1)">
+				<i class="bi bi-caret-left-fill"></i>
+			</button>
+
+			<h4 id="displayMonth" th:text="${displayMonth}"></h4>
+
+			<button type="button" class="btn btn-outline-secondary" onclick="changeMonth(1)">
+				<i class="bi bi-caret-right-fill"></i>
+			</button>
+
+		</div>
+		<input type="hidden" id="yearMonth" th:value="${yearMonth}">
+
+		<!-- 勤怠一覧 -->
+		<div class="row justify-content-center">
+			<div class="col-md-10">
+				<div style="max-height: 450px; overflow-y: auto;">
+				<table class="table table-bordered table-hover text-center align-middle">
+					<thead class="table-light" style="position: sticky; top: 0; z-index: 2; background-color: #f8f9fa;">
+						<tr>
+							<th>日にち</th>
+							<th>出勤時刻</th>
+							<th>退勤時刻</th>
+							<th>申請</th>
+						</tr>
+					</thead>
+					<tbody id="attendanceBody">
+						<!-- Ajaxで描画 -->
+					</tbody>
+				</table>
+				</div>
+			</div>
+		</div>
+
+	</div>
+
+	<script th:inline="javascript">
+		const csrfToken = document.querySelector('meta[name="_csrf"]').content;
+		const csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
+
+		function changeMonth(diff) {
+
+			const ymInput = document.getElementById("yearMonth");
+			const display = document.getElementById("displayMonth");
+
+			let [year, month] = ymInput.value.split("-").map(Number);
+
+			month += diff;
+			if (month === 0) {month = 12; year--;}
+			if (month === 13) {month = 1; year++;}
+
+			const newYm = `${year}-${String(month).padStart(2, '0')}`;
+
+			fetch("/user/attendance_list/change", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					[csrfHeader]: csrfToken
+				},
+				body: JSON.stringify({
+					yearMonth: newYm
+				})
+			})
+				.then(res => res.json())
+				.then(data => {
+
+					display.textContent = data.displayMonth;
+					ymInput.value = data.yearMonth;
+
+					renderTable(data.attendanceList);
+				})
+				.catch(err => console.error(err));
+		}
+
+
+		function renderTable(list) {
+
+			const tbody = document.getElementById("attendanceBody");
+			tbody.innerHTML = "";
+
+			list.forEach(a => {
+
+				const tr = document.createElement("tr");
+
+				/* 日にち（workDate: yyyy-MM-dd） */
+				const date = new Date(a.workDate);
+				const dayTd = document.createElement("td");
+				dayTd.textContent = date.getDate() + "日";
+
+				/* 出勤時刻（LocalDateTime） */
+				const inTd = document.createElement("td");
+				inTd.textContent = formatTime(a.clockIn);
+
+				/* 退勤時刻 */
+				const outTd = document.createElement("td");
+				outTd.textContent = formatTime(a.clockOut);
+
+				// 申請
+				const applyTd = document.createElement("td");
+				const link = document.createElement("a");
+				link.className = "btn btn-sm btn-outline-primary";
+				link.textContent = "申請";
+				const workDate = new Date(a.workDate)
+				    .toISOString()
+				    .split("T")[0];
+				link.href = /*[[@{/user/attendance/application}]]*/
+				    + "?workDate=" + workDate;
+				applyTd.appendChild(link);
+
+				tr.appendChild(dayTd);
+				tr.appendChild(inTd);
+				tr.appendChild(outTd);
+				tr.appendChild(applyTd);
+
+				tbody.appendChild(tr);
+			});
+		}
+
+		function formatTime(dateTime) {
+			if (!dateTime) return "—";
+			return dateTime.substring(11, 16); // HH:mm
+		}
+
+		document.addEventListener("DOMContentLoaded", () => {
+			changeMonth(0); // 当月
+		});
+	</script>
+</body>
+
+</html>
